@@ -172,11 +172,12 @@ impl OpaqueHandler for SqlOpaqueHandler {
         &self,
         request: registration::ClientRegistrationStartRequest,
     ) -> Result<registration::ServerRegistrationStartResponse> {
+        let mut rng = rand::rngs::OsRng;
         // Generate the server-side key and derive the data to send back.
         let start_response = opaque::server::registration::start_registration(
-            self.config.get_server_setup(),
+            &mut rng,
             request.registration_start_request,
-            &request.username,
+            self.config.get_server_setup().public_key(),
         )?;
         let secret_key = self.get_orion_secret_key()?;
         let server_data = registration::ServerData {

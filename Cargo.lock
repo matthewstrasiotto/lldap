@@ -986,6 +986,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "displaydoc"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3bf95dc3f046b9da4f2d51833c0d3547d8564ef6910f5c1ed130306a75b92886"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "dotenv"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1903,7 +1914,7 @@ dependencies = [
  "lldap_auth",
  "log",
  "mockall",
- "opaque-ke",
+ "opaque-ke 0.6.0",
  "openssl-sys",
  "orion",
  "rand 0.8.4",
@@ -1958,7 +1969,7 @@ dependencies = [
  "digest",
  "generic-array",
  "getrandom 0.2.3",
- "opaque-ke",
+ "opaque-ke 1.2.0",
  "rand 0.8.4",
  "rust-argon2",
  "serde",
@@ -2327,7 +2338,7 @@ dependencies = [
  "base64",
  "curve25519-dalek",
  "digest",
- "displaydoc",
+ "displaydoc 0.1.7",
  "generic-array",
  "generic-bytes",
  "hkdf",
@@ -2336,6 +2347,25 @@ dependencies = [
  "serde",
  "subtle",
  "thiserror",
+ "zeroize",
+]
+
+[[package]]
+name = "opaque-ke"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f25e5f1be61b7a94f388368a24739318fe4edd2b841d20d7077a422a5391e22f"
+dependencies = [
+ "constant_time_eq",
+ "curve25519-dalek",
+ "digest",
+ "displaydoc 0.2.3",
+ "generic-array",
+ "getrandom 0.2.3",
+ "hkdf",
+ "hmac 0.11.0",
+ "rand 0.8.4",
+ "subtle",
  "zeroize",
 ]
 

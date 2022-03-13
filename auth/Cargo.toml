@@ -21,7 +21,8 @@ sha2 = "0.9"
 thiserror = "*"
 
 [dependencies.opaque-ke]
-version = "0.6"
+version = "1"
+features = [ "std" ]
 
 [dependencies.chrono]
 version = "*"

@@ -9,7 +9,8 @@ pub enum AuthenticationError {
 
 pub type AuthenticationResult<T> = std::result::Result<T, AuthenticationError>;
 
-pub use opaque_ke::keypair::{PrivateKey, PublicKey};
+pub type PrivateKey = opaque_ke::keypair::Key;
+pub type PublicKey = opaque_ke::keypair::Key;
 pub type KeyPair = opaque_ke::keypair::KeyPair<<DefaultSuite as CipherSuite>::Group>;
 
 /// A wrapper around argon2 to provide the [`opaque_ke::slow_hash::SlowHash`] trait.
@@ -112,7 +113,11 @@ pub mod client {
             password: &str,
             rng: &mut R,
         ) -> AuthenticationResult<ClientLoginStartResult> {
-            Ok(ClientLogin::start(rng, password.as_bytes())?)
+            Ok(ClientLogin::start(
+                rng,
+                password.as_bytes(),
+                opaque_ke::ClientLoginStartParameters::default(),
+            )?)
         }
 
         /// Finalize the client login negotiation.
@@ -131,7 +136,6 @@ pub mod client {
 pub mod server {
     pub use super::*;
     pub type ServerRegistration = opaque_ke::ServerRegistration<DefaultSuite>;
-    pub type ServerSetup = opaque_ke::ServerSetup<DefaultSuite>;
     /// Methods to register a new user, from the server side.
     pub mod registration {
         pub use super::*;
@@ -142,21 +146,24 @@ pub mod server {
         /// Start a registration process, from a request sent by the client.
         ///
         /// The result must be kept for the next step.
-        pub fn start_registration(
-            server_setup: &ServerSetup,
+        pub fn start_registration<R: RngCore + CryptoRng>(
+            rng: &mut R,
             registration_request: RegistrationRequest,
-            username: &str,
+            server_public_key: &PublicKey,
         ) -> AuthenticationResult<ServerRegistrationStartResult> {
             Ok(ServerRegistration::start(
-                server_setup,
+                rng,
                 registration_request,
-                username.as_bytes(),
+                server_public_key,
             )?)
         }
 
         /// Finish to register a new user, and get the data to store in the database.
-        pub fn get_password_file(registration_upload: RegistrationUpload) -> ServerRegistration {
-            ServerRegistration::finish(registration_upload)
+        pub fn get_password_file(
+            server_registration: ServerRegistration,
+            registration_upload: RegistrationUpload,
+        ) -> AuthenticationResult<ServerRegistration> {
+            Ok(server_registration.finish(registration_upload)?)
         }
     }
 
@@ -165,7 +172,8 @@ pub mod server {
         pub use super::*;
         pub type CredentialFinalization = opaque_ke::CredentialFinalization<DefaultSuite>;
         pub type CredentialRequest = opaque_ke::CredentialRequest<DefaultSuite>;
-        pub type ServerLogin = opaque_ke::ServerLogin<DefaultSuite>;
+        #[derive(Clone)]
+        pub struct ServerLogin(opaque_ke::ServerLogin<DefaultSuite>);
         pub type ServerLoginStartResult = opaque_ke::ServerLoginStartResult<DefaultSuite>;
         pub type ServerLoginFinishResult = opaque_ke::ServerLoginFinishResult<DefaultSuite>;
         pub use opaque_ke::ServerLoginStartParameters;
@@ -175,17 +183,15 @@ pub mod server {
         /// The result must be kept for the next step.
         pub fn start_login<R: RngCore + CryptoRng>(
             rng: &mut R,
-            server_setup: &ServerSetup,
-            password_file: Option<ServerRegistration>,
+            password_file: ServerRegistration,
+            server_private_key: &PrivateKey,
             credential_request: CredentialRequest,
-            username: &str,
         ) -> AuthenticationResult<ServerLoginStartResult> {
-            Ok(ServerLogin::start(
+            Ok(opaque_ke::ServerLogin::<DefaultSuite>::start(
                 rng,
-                server_setup,
                 password_file,
+                server_private_key,
                 credential_request,
-                username.as_bytes(),
                 ServerLoginStartParameters::default(),
             )?)
         }
@@ -195,7 +201,52 @@ pub mod server {
             login_start: ServerLogin,
             credential_finalization: CredentialFinalization,
         ) -> AuthenticationResult<ServerLoginFinishResult> {
-            Ok(login_start.finish(credential_finalization)?)
+            Ok(login_start.0.finish(credential_finalization)?)
+        }
+
+        impl serde::Serialize for ServerLogin {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                use serde::ser::Error;
+                serializer.serialize_bytes(
+                    &self
+                        .0
+                        .serialize()
+                        .map_err(|e| <S as serde::Serializer>::Error::custom(e.to_string()))?,
+                )
+            }
+        }
+
+        impl<'de> serde::Deserialize<'de> for ServerLogin {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                use serde::de::{Error, Visitor};
+
+                struct BytesVisitor;
+
+                impl<'de> Visitor<'de> for BytesVisitor {
+                    type Value = ServerLogin;
+
+                    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                        formatter.write_str("a byte-encoded value")
+                    }
+
+                    fn visit_bytes<E>(self, value: &[u8]) -> Result<Self::Value, E>
+                    where
+                        E: Error,
+                    {
+                        Ok(ServerLogin(
+                            opaque_ke::ServerLogin::<DefaultSuite>::deserialize(value)
+                                .map_err(|e| E::custom(e.to_string()))?,
+                        ))
+                    }
+                }
+                deserializer.deserialize_bytes(BytesVisitor)
+            }
         }
     }
 }
