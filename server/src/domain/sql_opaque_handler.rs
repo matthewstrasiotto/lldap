@@ -53,12 +53,15 @@ impl SqlBackendHandler {
     ) -> Result<Option<opaque::server::ServerRegistration>> {
         // Fetch the previously registered password file from the DB.
         let password_file_bytes = {
-            let query = Query::select()
+            let (query, values) = Query::select()
                 .column(Users::PasswordHash)
                 .from(Users::Table)
-                .and_where(Expr::col(Users::UserId).eq(username))
-                .to_string(DbQueryBuilder {});
-            if let Some(row) = sqlx::query(&query).fetch_optional(&self.sql_pool).await? {
+                .cond_where(Expr::col(Users::UserId).eq(username))
+                .build(DbQueryBuilder {});
+            if let Some(row) = sqlx::query_with(query.as_str(), values)
+                .fetch_optional(&self.sql_pool)
+                .await?
+            {
                 if let Some(bytes) =
                     row.get::<Option<Vec<u8>>, _>(&*Users::PasswordHash.to_string())
                 {
@@ -94,12 +97,15 @@ impl LoginHandler for SqlBackendHandler {
                 )));
             }
         }
-        let query = Query::select()
+        let (query, values) = Query::select()
             .column(Users::PasswordHash)
             .from(Users::Table)
-            .and_where(Expr::col(Users::UserId).eq(&request.name))
-            .to_string(DbQueryBuilder {});
-        if let Ok(row) = sqlx::query(&query).fetch_one(&self.sql_pool).await {
+            .cond_where(Expr::col(Users::UserId).eq(&request.name))
+            .build(DbQueryBuilder {});
+        if let Ok(row) = sqlx::query_with(&query, values)
+            .fetch_one(&self.sql_pool)
+            .await
+        {
             if let Some(password_hash) =
                 row.get::<Option<Vec<u8>>, _>(&*Users::PasswordHash.to_string())
             {
@@ -209,15 +215,14 @@ impl OpaqueHandler for SqlOpaqueHandler {
             opaque::server::registration::get_password_file(request.registration_upload);
         {
             // Set the user password to the new password.
-            let update_query = Query::update()
+            let (update_query, values) = Query::update()
                 .table(Users::Table)
-                .values(vec![(
-                    Users::PasswordHash,
-                    password_file.serialize().into(),
-                )])
-                .and_where(Expr::col(Users::UserId).eq(username))
-                .to_string(DbQueryBuilder {});
-            sqlx::query(&update_query).execute(&self.sql_pool).await?;
+                .value(Users::PasswordHash, password_file.serialize().into())
+                .cond_where(Expr::col(Users::UserId).eq(username))
+                .build(DbQueryBuilder {});
+            sqlx::query_with(update_query.as_str(), values)
+                .execute(&self.sql_pool)
+                .await?;
         }
         Ok(())
     }

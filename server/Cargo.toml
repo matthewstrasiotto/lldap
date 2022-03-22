@@ -33,7 +33,7 @@ orion = "0.16"
 serde = "*"
 serde_json = "1"
 sha2 = "0.9"
-sqlx-core = "=0.5.1"
+sqlx-core = "0.5.11"
 thiserror = "*"
 time = "0.2"
 tokio = { version = "1.2.0", features = ["full"] }
@@ -62,7 +62,7 @@ features = [
 ]
 
 [dependencies.sqlx]
-version = "0.5.1"
+version = "0.5.11"
 features = [
   "any",
   "chrono",
@@ -74,8 +74,8 @@ features = [
 ]
 
 [dependencies.sea-query]
-version = "0.9.4"
-features = ["with-chrono"]
+version = "0.23"
+features = ["sqlx-chrono", "sqlx-sqlite"]
 
 [dependencies.figment]
 features = ["env", "toml"]
