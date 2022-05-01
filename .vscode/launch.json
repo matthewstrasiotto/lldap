@@ -6,9 +6,10 @@
             "type": "lldb",
             "request": "launch",
             "name": "Debug",
+            "preLaunchTask": "build",
             "program": "${workspaceRoot}/target/debug/${workspaceRootFolderName}",
             "args": ["run", "--config-file", "${workspaceRoot}/lldap_config.toml"],
-            "cwd": "${workspaceRoot}/target/debug/",
+            //"cwd": "${workspaceRoot}/target/debug/",
             "sourceLanguages": ["rust"]
         }
     ]
