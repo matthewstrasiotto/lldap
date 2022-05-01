@@ -1,0 +1,36 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+  
+    "tasks": [
+      {
+        "label": "build",
+        "dependsOrder": "sequence",
+        "dependsOn": [
+            "build-frontend", 
+            "build-backend",
+        ]
+      },
+      {
+        "label": "build-backend",
+        "command": "cargo",
+        "type": "shell",
+        "args": [
+            "build"
+        ],
+        "group": "build",
+        //"presentation": {
+        // "reveal": "silent"
+        //},
+        //"problemMatcher": "$msCompile"
+      },
+      {
+          "label": "build-frontend",
+          "type": "shell",
+          "command": "${workspaceRoot}/app/build.sh",
+          "group": "build",
+      },
+    ]
+  }
+  
